@@ -20,6 +20,11 @@ class Importer:
   
   def __init__(self, options, project):
     self.options = options
+    self.headers = {  'User-Agent': 'bongohrtech',
+                    'Authorization': 'Bearer ce4917304983ef6c76ebec0eece4486d4b58853d',
+                    'Content-Type': 'application/json'
+                    #, 'Accept': 'application/vnd.github.golden-comet-preview+json'
+                    }
     self.project = project
     self.github_url = 'https://api.github.com/repos/' + self.options.account + '/' + self.options.repo
     self.jira_issue_replace_patterns = {'https://java.net/jira/browse/' + self.project.name + r'-(\d+)': r'\1',
@@ -35,7 +40,7 @@ class Importer:
     print
     for mkey in self.project.get_milestones().iterkeys():
         data = {'title': mkey}
-        r = requests.post(milestone_url, json=data, auth=(self.options.user, self.options.passwd), timeout=Importer._DEFAULT_TIME_OUT)
+        r = requests.post(milestone_url, json=data, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
         
         # overwrite histogram data with the actual milestone id now
         if r.status_code == 201:
@@ -68,7 +73,7 @@ class Importer:
     print
     for lkey in self.project.get_components().iterkeys():
       data = {'name': lkey, 'color': '%.6x' % random.randint(0, 0xffffff)}
-      r = requests.post(label_url, json=data, auth=(self.options.user, self.options.passwd), timeout=Importer._DEFAULT_TIME_OUT)
+      r = requests.post(label_url, json=data, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
       if r.status_code == 201:
         print lkey
       else:
@@ -114,8 +119,8 @@ class Importer:
     print 'Issue ', issue['key']
     jiraKey = issue['key']
     del issue['key']
-    
-    headers = {'Accept': 'application/vnd.github.golden-comet-preview+json'}
+    headers = self.headers
+    headers['Accept'] = 'application/vnd.github.golden-comet-preview+json'
     response = self.upload_github_issue(issue, comments, headers)
     status_url = response.json()['url']
     gh_issue_url = self.wait_for_issue_creation(status_url, headers).json()['issue_url']
@@ -130,7 +135,7 @@ class Importer:
       """
       issue_url = self.github_url + '/import/issues'
       issue_data = {'issue': issue, 'comments': comments}
-      response = requests.post(issue_url, json=issue_data, auth=(self.options.user, self.options.passwd), headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
+      response = requests.post(issue_url, json=issue_data, headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
       if response.status_code == 202:
           return response
       elif response.status_code == 422:
@@ -152,7 +157,7 @@ class Importer:
       either 'imported' or 'failed'.
       """
       while True:  # keep checking until status is something other than 'pending'
-          response = requests.get(status_url, auth=(self.options.user, self.options.passwd), headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
+          response = requests.get(status_url, headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
           if response.status_code != 200:
               raise RuntimeError(
                   "Failed to check GitHub issue import status url: {} due to unexpected HTTP status code: {}"
@@ -222,7 +227,7 @@ class Importer:
     Paginates through all issue comments and replaces the issue id placeholders with the correct issue ids.
     """    
     print "listing comments using " + url
-    response = requests.get(url, auth=(self.options.user, self.options.passwd), timeout=Importer._DEFAULT_TIME_OUT)
+    response = requests.get(url, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
     if response.status_code != 200:
         raise RuntimeError(
             "Failed to list all comments due to unexpected HTTP status code: {}".format(response.status_code)
@@ -262,7 +267,7 @@ class Importer:
     # print "new body:" + body
     patch_data = {'body': body}
     # print patch_data
-    response = requests.patch(url, json=patch_data, auth=(self.options.user, self.options.passwd), timeout=Importer._DEFAULT_TIME_OUT)
+    response = requests.patch(url, json=patch_data, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
     if response.status_code != 200:
         raise RuntimeError(
             "Failed to patch comment {} due to unexpected HTTP status code: {} ; text: {}".format(url, response.status_code, response.text)

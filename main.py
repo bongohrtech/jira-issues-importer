@@ -10,14 +10,20 @@ def read_xml_sourcefile(file_name):
   all_text = open(file_name).read()
   return objectify.fromstring(all_text)
 
-file_name = raw_input('Path to JIRA XML query file: ')
+#file_name = raw_input('Path to JIRA XML query file: ')
+file_name = "export.xml"
 all_xml = read_xml_sourcefile(file_name);
 
-jiraProj = raw_input('JIRA project name to use: ')
-us = raw_input('GitHub account name: ')
-repo = raw_input('GitHub project name: ')
-user = raw_input('GitHub username: ')
-pw = getpass.getpass('GitHub password: ')
+jiraProj = "LUCENENET"
+#jiraProj = raw_input('JIRA project name to use: ')
+us = "bongohrtech"
+#us = raw_input('GitHub account name: ')
+#repo = raw_input('GitHub project name: ')
+repo = "lucenenet"
+#user = raw_input('GitHub username: ')
+user = "bongohrtech"
+#pw = getpass.getpass('GitHub password: ')
+pw = "****"
 
 Options = namedtuple("Options", "user passwd account repo")
 opts = Options(user=user, passwd=pw, account=us, repo=repo)
