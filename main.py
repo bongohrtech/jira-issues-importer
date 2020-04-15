@@ -11,22 +11,27 @@ def read_xml_sourcefile(file_name):
   return objectify.fromstring(all_text)
 
 #file_name = raw_input('Path to JIRA XML query file: ')
-file_name = "export.xml"
-all_xml = read_xml_sourcefile(file_name);
-
-jiraProj = "LUCENENET"
 #jiraProj = raw_input('JIRA project name to use: ')
-us = "bongohrtech"
 #us = raw_input('GitHub account name: ')
 #repo = raw_input('GitHub project name: ')
-repo = "lucenenet"
 #user = raw_input('GitHub username: ')
-user = "bongohrtech"
 #pw = getpass.getpass('GitHub password: ')
-pw = "****"
+#token = raw_input('GitHub token: ')
 
-Options = namedtuple("Options", "user passwd account repo")
-opts = Options(user=user, passwd=pw, account=us, repo=repo)
+file_name = "export.xml"
+jiraProj = "LUCENENET"
+us = "bongohrtech"
+repo = "lucenenet"
+user = "bongohrtech"
+pw = "****"
+token = "ACCESS_TOKEN"
+
+#purge flag
+purge_before_import = "true"
+
+all_xml = read_xml_sourcefile(file_name)
+Options = namedtuple("Options", "user passwd account repo token")
+opts = Options(user=user, passwd=pw, account=us, repo=repo, token=token)
 
 project = Project(jiraProj)
 
@@ -44,6 +49,9 @@ Steps:
   4: Post-process all comments to replace issue id placeholders with the real ones
 '''
 importer = Importer(opts, project)
+
+if purge_before_import == "true":
+  importer.purge_existing_issues()
 
 importer.import_milestones()
 importer.import_labels()

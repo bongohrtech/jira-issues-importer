@@ -4,12 +4,10 @@ import requests
 import random
 import time
 import re
+import json
 
 
 class Importer:
-
-  
-  
   _GITHUB_ISSUE_PREFIX = "GH-"
   
   _PLACEHOLDER_PREFIX = "@PSTART"
@@ -17,16 +15,16 @@ class Importer:
   _PLACEHOLDER_SUFFIX = "@PEND"
   
   _DEFAULT_TIME_OUT = 120.0
-  
+
   def __init__(self, options, project):
     self.options = options
     self.headers = {  'User-Agent': 'bongohrtech',
-                    'Authorization': 'Bearer ce4917304983ef6c76ebec0eece4486d4b58853d',
+                    'Authorization': 'Bearer ' + options.token,
                     'Content-Type': 'application/json'
-                    #, 'Accept': 'application/vnd.github.golden-comet-preview+json'
                     }
     self.project = project
     self.github_url = 'https://api.github.com/repos/' + self.options.account + '/' + self.options.repo
+    self.githubGQL_url = 'https://api.github.com/graphql'
     self.jira_issue_replace_patterns = {'https://java.net/jira/browse/' + self.project.name + r'-(\d+)': r'\1',
                                        self.project.name + r'-(\d+)': Importer._GITHUB_ISSUE_PREFIX + r'\1',
                                        r'Issue (\d+)': Importer._GITHUB_ISSUE_PREFIX + r'\1'}
@@ -89,6 +87,7 @@ class Importer:
     """
     print 'Importing issues...'
     for issue in self.project.get_issues():
+      
         #time.sleep(2)
         if 'milestone_name' in issue:
           issue['milestone'] = self.project.get_milestones()[ issue['milestone_name'] ]
@@ -102,7 +101,7 @@ class Importer:
         comments = []
         for comment in issue_comments:
           comments.append(dict((k,self._replace_jira_with_github_id(v)) for k,v in comment.items()))
-        
+         
         self.import_issue_with_comments(issue, comments)
 
   def import_issue_with_comments(self, issue, comments):
@@ -135,6 +134,8 @@ class Importer:
       """
       issue_url = self.github_url + '/import/issues'
       issue_data = {'issue': issue, 'comments': comments}
+      
+      print json.dumps(issue_data, indent=2, sort_keys=True)
       response = requests.post(issue_url, json=issue_data, headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
       if response.status_code == 202:
           return response
@@ -145,8 +146,8 @@ class Importer:
           )
       else:
           raise RuntimeError(
-              "Failed to POST issue: '{}' due to unexpected HTTP status code: {}\nerrors:\n{}"
-              .format(issue['title'], response.status_code, response.json())
+              "Failed to POST issue: '{}' due to unexpected HTTP status code: {}\nerrors:\n{} \nURL {}"
+              .format(issue['title'], response.status_code, response.json(), issue_url)
           )
 
 
@@ -272,4 +273,48 @@ class Importer:
         raise RuntimeError(
             "Failed to patch comment {} due to unexpected HTTP status code: {} ; text: {}".format(url, response.status_code, response.text)
         )
+
+  def purge_existing_issues(self):
+    print "Calling graphql api..."
+
     
+    headers = self.headers
+    headers['Content-Type'] = 'application/json'
+
+    q = """
+    {
+      __typename
+      search(type: ISSUE, query: "repo:""" + self.options.account + '/' + self.options.repo + """", first: 100) {
+        nodes {
+          ... on Issue {
+            id
+          }
+        }
+      }
+    }
+    """
+
+    
+    e = "q {}"
+    print 'query: {}'.format(q)
+    response = requests.post(self.githubGQL_url, headers=headers, json={'query': q})
+    if response.status_code != 200:
+      raise RuntimeError(
+            "Failed to get issues {} due to unexpected HTTP status code: {} ; text: {}".format(self.githubGQL_url, response.status_code, response.text)
+          )
+    else:
+      data = response.json()
+      
+      for node in data['data']['search']['nodes'] :
+          d = """
+              mutation {   deleteIssue(input: {issueId: \"""" + node['id'] + """\"}) {     clientMutationId    repository {      id    }  }}
+              """
+          print 'query: {}'.format(d)
+ 
+          response = requests.post(self.githubGQL_url, headers=headers, json={'query': d})
+          if response.status_code != 200:
+            raise RuntimeError(
+                  "Failed to get issues {} due to unexpected HTTP status code: {} ; text: {}".format(self.githubGQL_url, response.status_code, response.text)
+                )
+          else:
+            print response.json()
