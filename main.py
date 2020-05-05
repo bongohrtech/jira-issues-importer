@@ -20,14 +20,14 @@ def read_xml_sourcefile(file_name):
 
 file_name = "export.xml"
 jiraProj = "LUCENENET"
-us = "bongohrtech"
+us = "apache"
 repo = "lucenenet"
-user = "bongohrtech"
-pw = "****"
-token = "ACCESS_TOKEN"
+user = "NA"
+pw = "NA"
+token = "YOUR_ACCESS_TOKEN"
 
 #purge flag
-purge_before_import = "true"
+purge_before_import = "false"
 
 all_xml = read_xml_sourcefile(file_name)
 Options = namedtuple("Options", "user passwd account repo token")
