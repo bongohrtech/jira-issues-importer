@@ -34,9 +34,9 @@ class Importer:
     Imports the gathered project milestones into GitHub and remembers the created milestone ids
     """
     milestone_url = self.github_url + '/milestones'
-    print 'Importing milestones...', milestone_url
+    print ('Importing milestones...', milestone_url)
     print
-    for mkey in self.project.get_milestones().iterkeys():
+    for mkey in self.project.get_milestones().keys():
         data = {'title': mkey}
         r = requests.post(milestone_url, json=data, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
         
@@ -44,7 +44,7 @@ class Importer:
         if r.status_code == 201:
           content = r.json()
           self.project.get_milestones()[mkey] = content['number']
-          print mkey
+          print (mkey)
         else:
           if r.status_code == 422: # already exists
             ms = requests.get(milestone_url + '?state=open', timeout=Importer._DEFAULT_TIME_OUT).json()
@@ -53,13 +53,13 @@ class Importer:
             for m in ms:
               if m['title'] == mkey:
                 self.project.get_milestones()[mkey] = m['number']
-                print mkey, 'found'
+                print (mkey, 'found')
                 f = True
                 break
             if not f:
               exit('Could not find milestone: ' + mkey)
           else:
-            print 'Failure!', r.status_code, r.content, r.headers
+            print ('Failure!', r.status_code, r.content, r.headers)
     
   
   def import_labels(self):
@@ -67,15 +67,15 @@ class Importer:
     Imports the gathered project components and labels as labels into GitHub 
     """
     label_url = self.github_url + '/labels'
-    print 'Importing labels...', label_url
+    print ('Importing labels...', label_url)
     print
-    for lkey in self.project.get_components().iterkeys():
+    for lkey in self.project.get_components().keys():
       data = {'name': lkey, 'color': '%.6x' % random.randint(0, 0xffffff)}
       r = requests.post(label_url, json=data, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
       if r.status_code == 201:
-        print lkey
+        print (lkey)
       else:
-        print 'Failure importing label ' + lkey, r.status_code, r.content, r.headers
+        print ('Failure importing label ' + lkey, r.status_code, r.content, r.headers)
 
   def import_issues(self):
     """
@@ -85,7 +85,7 @@ class Importer:
     After that, the comments are taken out of the issue and 
     references to JIRA issues in comments are replaced with a placeholder    
     """
-    print 'Importing issues...'
+    print ('Importing issues...')
     for issue in self.project.get_issues():
       
         #time.sleep(2)
@@ -115,7 +115,7 @@ class Importer:
     Then GitHub is pulled in a loop until the issue import is completed.
     Finally the issue github is noted.    
     """
-    print 'Issue ', issue['key']
+    print ('Issue ', issue['key'])
     jiraKey = issue['key']
     del issue['key']
     headers = self.headers
@@ -135,7 +135,7 @@ class Importer:
       issue_url = self.github_url + '/import/issues'
       issue_data = {'issue': issue, 'comments': comments}
       
-      print json.dumps(issue_data, indent=2, sort_keys=True)
+      print (json.dumps(issue_data, indent=2, sort_keys=True))
       response = requests.post(issue_url, json=issue_data, headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
       if response.status_code == 202:
           return response
@@ -169,7 +169,7 @@ class Importer:
               break
           time.sleep(1)
       if status == 'imported':
-          print "Imported Issue:", response.json()['issue_url']
+          print ("Imported Issue:", response.json()['issue_url'])
       elif status == 'failed':
           raise RuntimeError(
               "Failed to import GitHub issue due to the following errors:\n{}"
@@ -212,7 +212,7 @@ class Importer:
       
   def _replace_jira_with_github_id(self, text):
     result = text
-    for pattern, replacement in self.jira_issue_replace_patterns.iteritems():
+    for pattern, replacement in self.jira_issue_replace_patterns.items():
       result = re.sub(pattern, Importer._PLACEHOLDER_PREFIX + replacement + Importer._PLACEHOLDER_SUFFIX, result)
     return result
       
@@ -227,7 +227,7 @@ class Importer:
     """
     Paginates through all issue comments and replaces the issue id placeholders with the correct issue ids.
     """    
-    print "listing comments using " + url
+    print ("listing comments using " + url)
     response = requests.get(url, headers=self.headers, timeout=Importer._DEFAULT_TIME_OUT)
     if response.status_code != 200:
         raise RuntimeError(
@@ -247,7 +247,7 @@ class Importer:
         next_url = next_comments['url'];
         self._post_process_comments(next_url)
     except KeyError:
-      print 'no more pages for comments: '
+      print ('no more pages for comments: ')
       for key, value in response.links.items():
         print(key)
         print(value)
@@ -264,7 +264,7 @@ class Importer:
     """
     Patches a single comment body of a Github issue.
     """
-    print "patching comment " + url
+    print ("patching comment " + url)
     # print "new body:" + body
     patch_data = {'body': body}
     # print patch_data
@@ -275,7 +275,7 @@ class Importer:
         )
 
   def purge_existing_issues(self):
-    print "Calling graphql api..."
+    print ("Calling graphql api...")
 
     
     headers = self.headers
@@ -296,7 +296,7 @@ class Importer:
 
     
     e = "q {}"
-    print 'query: {}'.format(q)
+    print ('query: {}'.format(q))
     response = requests.post(self.githubGQL_url, headers=headers, json={'query': q})
     if response.status_code != 200:
       raise RuntimeError(
@@ -309,7 +309,7 @@ class Importer:
           d = """
               mutation {   deleteIssue(input: {issueId: \"""" + node['id'] + """\"}) {     clientMutationId    repository {      id    }  }}
               """
-          print 'query: {}'.format(d)
+          print ('query: {}'.format(d))
  
           response = requests.post(self.githubGQL_url, headers=headers, json={'query': d})
           if response.status_code != 200:
@@ -317,4 +317,4 @@ class Importer:
                   "Failed to get issues {} due to unexpected HTTP status code: {} ; text: {}".format(self.githubGQL_url, response.status_code, response.text)
                 )
           else:
-            print response.json()
+            print (response.json())

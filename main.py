@@ -22,8 +22,8 @@ file_name = "export.xml"
 jiraProj = "LUCENENET"
 us = "apache"
 repo = "lucenenet"
-user = "NA"
-pw = "NA"
+user = "na"
+pw = "****"
 token = "YOUR_ACCESS_TOKEN"
 
 #purge flag
